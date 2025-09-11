@@ -355,7 +355,7 @@ namespace Pg_Plaisio_App
             SetText(Label189, "D45");
             SetText(Label190, "D45");
 
-            string selectedValue = (ComboBox12.Text ?? string.Empty)
+            string selectedValue = (ComboBox10.Text ?? string.Empty)
                 .Replace('\u00A0', ' ') // \u00A0 = non-breaking space
                 .Trim();
 
