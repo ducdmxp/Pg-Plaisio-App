@@ -234,7 +234,7 @@ namespace Pg_Plaisio_App
                 if (workbook == null)
                 {
                     Console.WriteLine($"❌ Lỗi: Workbook chưa được khởi tạo.");
-                    return 0;
+                    return double.NaN;
                 }
 
                 worksheet = GetWorksheet(worksheetName);
@@ -248,7 +248,7 @@ namespace Pg_Plaisio_App
                 object cellValue = cell.Value2;
 
                 if (cellValue == null)
-                    return 0;
+                    return double.NaN;
 
                 if (double.TryParse(cellValue.ToString(), out double result))
                 {
@@ -257,7 +257,7 @@ namespace Pg_Plaisio_App
                 }
 
                 Console.WriteLine($"⚠️ Không thể chuyển đổi '{cellValue}' thành double");
-                return 0;
+                return double.NaN;
             }
             catch (Exception ex)
             {

@@ -153,7 +153,42 @@ namespace Pg_Plaisio_App
 
         private void CommandButton5_Click(object sender, EventArgs e)
         {
-            tabControl.SelectedIndex = 1; // Go to ΧΟΝΔΡΙΚΗ tab (Page1)
+            tabControl.SelectedIndex = 1;
+        }
+
+        private void CommandButton6_Click(object sender, EventArgs e)
+        {
+            tabControl.SelectedIndex = 2;
+        }
+
+        private void CommandButton7_Click(object sender, EventArgs e)
+        {
+            tabControl.SelectedIndex = 3;
+        }
+
+        private void CommandButton8_Click(object sender, EventArgs e)
+        {
+            tabControl.SelectedIndex = 4;
+        }
+
+        private void CommandButton9_Click(object sender, EventArgs e)
+        {
+            tabControl.SelectedIndex = 5;
+        }
+
+        private void CommandButton10_Click(object sender, EventArgs e)
+        {
+            tabControl.SelectedIndex = 6;
+        }
+
+        private void CommandButton11_Click(object sender, EventArgs e)
+        {
+            tabControl.SelectedIndex = 7;
+        }
+
+        private void CommandButton12_Click(object sender, EventArgs e)
+        {
+            tabControl.SelectedIndex = 8;
         }
 
         private void ComboBox1_SelectedValueChanged(object sender, EventArgs e)
@@ -346,9 +381,9 @@ namespace Pg_Plaisio_App
             SetText(Label32, "C51");
 
             SetText(Label185, "K6");
-            SetText(Label186, "D43");
+            SetText(Label186, "D43", suffix: "m");
             SetText(Label187, "L6");
-            SetText(Label188, "D44");
+            SetText(Label188, "D44", suffix: "m");
             SetText(Label189, "D45");
             SetText(Label190, "D45");
 
@@ -377,18 +412,14 @@ namespace Pg_Plaisio_App
                 Label191.Text = "Σφάλμα δεδομένων!";
         }
 
-        private void SetText(System.Windows.Forms.Label label, string cellAddress, bool isNumber = true, string sheetName = "ΧΟΝΔΡΙΚΗ")
+        private void SetText(System.Windows.Forms.Label label, string cellAddress, bool isNumber = true, string suffix = "", string sheetName = "ΧΟΝΔΡΙΚΗ")
         {
             string valueStr = _excelUtil.GetCellValueAsString(sheetName, cellAddress);
 
             if (double.TryParse(valueStr, NumberStyles.Any, CultureInfo.InvariantCulture, out double value) && isNumber)
-            {
-                label.Text = value.ToString("0.00", CultureInfo.InvariantCulture);
-            }
-            else
-            {
-                label.Text = valueStr;
-            }
+                valueStr = value.ToString("0.00", CultureInfo.InvariantCulture);
+
+            label.Text = valueStr + suffix;
         }
 
         private void CommandButton1_Click(object sender, EventArgs e)
