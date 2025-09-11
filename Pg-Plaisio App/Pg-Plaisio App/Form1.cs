@@ -36,6 +36,8 @@ namespace Pg_Plaisio_App
             tabControl.SelectedIndex = 1;
 
             InitDataΧΟΝΔΡΙΚΗ();
+
+            InitDataΑΚΑΡΦΩΤΗ();
         }
 
         public static bool CheckExpiry()
@@ -108,6 +110,32 @@ namespace Pg_Plaisio_App
             this.ComboBox11.SelectedValueChanged += new System.EventHandler(this.ComboBox11_SelectedValueChanged);
 
             this.ComboBox13.SelectedValueChanged += new System.EventHandler(this.ComboBox13_SelectedValueChanged);
+
+            this.TextBox1.TextChanged += new System.EventHandler(this.TextBox1_TextChanged);
+            this.TextBox2.TextChanged += new System.EventHandler(this.TextBox2_TextChanged);
+            this.TextBox3.TextChanged += new System.EventHandler(this.TextBox3_TextChanged);
+        }
+
+        private void InitDataΑΚΑΡΦΩΤΗ(string sheetName = "ΑΚΑΡΦΩΤΗ")
+        {
+            AddItemToComboBox(ComboBox42, sheetName, "K11:K274");
+
+            AddItemToComboBox(ComboBox43, sheetName, "K11:K274");
+
+            AddItemToComboBox(ComboBox41, sheetName, "R8:R9");
+
+            AddItemToComboBox(ComboBox40, sheetName, "W18:W28", true);
+
+            TextBox10.Text = _excelUtil.GetCellValueAsString(sheetName, "B8");
+            TextBox11.Text = _excelUtil.GetCellValueAsString(sheetName, "B10");
+
+            this.ComboBox42.SelectedValueChanged += new System.EventHandler(this.ComboBox42_SelectedValueChanged);
+            this.ComboBox43.SelectedValueChanged += new System.EventHandler(this.ComboBox43_SelectedValueChanged);
+            this.ComboBox41.SelectedValueChanged += new System.EventHandler(this.ComboBox41_SelectedValueChanged);
+            this.ComboBox40.SelectedValueChanged += new System.EventHandler(this.ComboBox40_SelectedValueChanged);
+
+            this.TextBox10.TextChanged += new System.EventHandler(this.TextBox10_TextChanged);
+            this.TextBox11.TextChanged += new System.EventHandler(this.TextBox11_TextChanged);
         }
 
         private void AddItemToComboBox(ComboBox comboBox, string sheetName, string rangeAddress, bool isFormat = false)
@@ -315,6 +343,76 @@ namespace Pg_Plaisio_App
             UpdateLabel1();
         }
 
+        private void ComboBox42_SelectedValueChanged(object sender, EventArgs e)
+        {
+            string value = ComboBox42.Text;
+
+            if ((string.IsNullOrEmpty(value)))
+                return;
+
+            bool startsWithZero = value.StartsWith("0");
+            bool isNumeric = double.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out double numericVal);
+
+            if (startsWithZero || !isNumeric)
+            {
+                // Xử lý như VĂN BẢN (TEXT)
+                _excelUtil.SetFormatCellValue("ΑΚΑΡΦΩΤΗ", "B4", "@", value);
+            }
+            else
+            {
+                // Xử lý như một con SỐ (NUMBER)
+                _excelUtil.SetFormatCellValue("ΑΚΑΡΦΩΤΗ", "B4", "General", numericVal);
+            }
+
+            UpdateLabel3();
+        }
+
+        private void ComboBox43_SelectedValueChanged(object sender, EventArgs e)
+        {
+            string value = ComboBox43.Text;
+            if (string.IsNullOrEmpty(value)) return;
+
+            bool startsWithZero = value.StartsWith("0");
+            bool isNumeric = double.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out double numericVal);
+
+            if (startsWithZero || !isNumeric)
+            {
+                _excelUtil.SetFormatCellValue("ΑΚΑΡΦΩΤΗ", "B6", "@", value);
+            }
+            else
+            {
+                _excelUtil.SetFormatCellValue("ΑΚΑΡΦΩΤΗ", "B6", "General", numericVal);
+            }
+            UpdateLabel3();
+        }
+
+        private void ComboBox41_SelectedValueChanged(object sender, EventArgs e)
+        {
+            _excelUtil.SetCellValue("ΑΚΑΡΦΩΤΗ", "B12", ComboBox41.Text);
+            UpdateLabel3();
+        }
+
+        private void ComboBox40_SelectedValueChanged(object sender, EventArgs e)
+        {
+            if (ComboBox40.SelectedIndex == -1)
+                return;
+
+            string selectedValue = ComboBox40.Text.Trim().Replace("%", "");
+
+            if (double.TryParse(selectedValue, NumberStyles.Any, CultureInfo.InvariantCulture, out double parsedNumber))
+            {
+                double percentageValue = parsedNumber / 100;
+
+                _excelUtil.SetFormatCellValue("ΑΚΑΡΦΩΤΗ", "C37", "0.00%", percentageValue);
+            }
+            else
+            {
+                MessageBox.Show("Μη έγκυρη τιμή!", "Σφάλμα", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+
+            UpdateLabel3();
+        }
+
         private void TextBox1_TextChanged(object sender, EventArgs e)
         {
             string value = TextBox1.Text;
@@ -346,6 +444,28 @@ namespace Pg_Plaisio_App
                 _excelUtil.SetCellValue("ΧΟΝΔΡΙΚΗ", "B28", value);
             }
             UpdateLabel1();
+        }
+
+        private void TextBox10_TextChanged(object sender, EventArgs e)
+        {
+            string value = TextBox10.Text;
+
+            if (double.TryParse(value, out _) || string.IsNullOrEmpty(value))
+            {
+                _excelUtil.SetCellValue("ΑΚΑΡΦΩΤΗ", "B8", value);
+            }
+            UpdateLabel3();
+        }
+
+        private void TextBox11_TextChanged(object sender, EventArgs e)
+        {
+            string value = TextBox11.Text;
+
+            if (double.TryParse(value, out _) || string.IsNullOrEmpty(value))
+            {
+                _excelUtil.SetCellValue("ΑΚΑΡΦΩΤΗ", "B10", value);
+            }
+            UpdateLabel3();
         }
 
         private void TextBoxInterger_KeyPress(object sender, KeyPressEventArgs e)
@@ -381,9 +501,9 @@ namespace Pg_Plaisio_App
             SetText(Label32, "C51");
 
             SetText(Label185, "K6");
-            SetText(Label186, "D43", suffix: "m");
+            SetText(Label186, "D43", suffix: " m");
             SetText(Label187, "L6");
-            SetText(Label188, "D44", suffix: "m");
+            SetText(Label188, "D44", suffix: " m");
             SetText(Label189, "D45");
             SetText(Label190, "D45");
 
@@ -410,6 +530,22 @@ namespace Pg_Plaisio_App
                 Label191.Text = val.ToString("0.00", CultureInfo.InvariantCulture);
             else
                 Label191.Text = "Σφάλμα δεδομένων!";
+        }
+
+        private void UpdateLabel3()
+        {
+            SetText(Label149, "C36", sheetName: "ΑΚΑΡΦΩΤΗ");
+            SetText(Label150, "C37", false, sheetName: "ΑΚΑΡΦΩΤΗ");
+            SetText(Label151, "C38", sheetName: "ΑΚΑΡΦΩΤΗ");
+            SetText(Label152, "C39", sheetName: "ΑΚΑΡΦΩΤΗ");
+            SetText(Label153, "C40", sheetName: "ΑΚΑΡΦΩΤΗ");
+            SetText(Label154, "C43", sheetName: "ΑΚΑΡΦΩΤΗ");
+            SetText(Label155, "C44", sheetName: "ΑΚΑΡΦΩΤΗ");
+
+            SetText(Label224, "K6", sheetName: "ΑΚΑΡΦΩΤΗ");
+            SetText(Label225, "D43", suffix: " m", sheetName: "ΑΚΑΡΦΩΤΗ");
+            SetText(Label226, "L6", sheetName: "ΑΚΑΡΦΩΤΗ");
+            SetText(Label227, "D44", suffix: " m", sheetName: "ΑΚΑΡΦΩΤΗ");
         }
 
         private void SetText(System.Windows.Forms.Label label, string cellAddress, bool isNumber = true, string suffix = "", string sheetName = "ΧΟΝΔΡΙΚΗ")
