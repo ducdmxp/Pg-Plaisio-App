@@ -26,8 +26,8 @@ namespace Pg_Plaisio_App
         {
             InitializeComponent();
 
-            if (CheckExpiry() == false)
-                return;
+            //if (CheckExpiry() == false)
+            //    return;
 
             string pathExcel = Path.Combine(GetAppFolder(), fileName);
 
@@ -274,7 +274,7 @@ namespace Pg_Plaisio_App
             }
             else
             {
-                MessageBox.Show("Ìç Ýãêõñç ôéìÞ!", "ÓöÜëìá", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Μη έγκυρη τιμή!", "Σφάλμα", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
 
             UpdateLabel1();
@@ -371,10 +371,10 @@ namespace Pg_Plaisio_App
                 val = _excelUtil.GetCellValueDouble("ΧΟΝΔΡΙΚΗ", "D50");
             }
 
-            if (val != double.NaN)
+            if (val != 0)
                 Label191.Text = val.ToString("0.00", CultureInfo.InvariantCulture);
             else
-                Label191.Text = "ÓöÜëìá äåäïìÝíùí!";
+                Label191.Text = "Σφάλμα δεδομένων!";
         }
 
         private void SetText(System.Windows.Forms.Label label, string cellAddress, bool isNumber = true, string sheetName = "ΧΟΝΔΡΙΚΗ")
