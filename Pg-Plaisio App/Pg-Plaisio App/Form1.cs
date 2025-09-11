@@ -371,7 +371,7 @@ namespace Pg_Plaisio_App
                 val = _excelUtil.GetCellValueDouble("ΧΟΝΔΡΙΚΗ", "D50");
             }
 
-            if (val != 0)
+            if (val != double.NaN)
                 Label191.Text = val.ToString("0.00", CultureInfo.InvariantCulture);
             else
                 Label191.Text = "Σφάλμα δεδομένων!";
