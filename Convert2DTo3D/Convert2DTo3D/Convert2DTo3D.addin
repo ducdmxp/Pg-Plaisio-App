@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<RevitAddIns>
+	<AddIn Type="Application">
+		<Name>Convert2DTo3D</Name>
+		<Assembly>Convert2DTo3D\Convert2DTo3D.dll</Assembly>
+		<AddInId>69a7e456-aa52-444a-b143-5b646f3b10b7</AddInId>
+		<FullClassName>Convert2DTo3D.App</FullClassName>
+		<VendorId>fda698bf-aec6-4841-8853-db9503b8ad0c</VendorId>
+		<VendorDescription>Convert2DTo3D</VendorDescription>
+	</AddIn>
+</RevitAddIns>

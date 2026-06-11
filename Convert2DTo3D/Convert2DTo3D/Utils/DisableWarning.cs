@@ -1,0 +1,23 @@
+﻿using Autodesk.Revit.DB;
+using System.Linq;
+
+namespace Convert2DTo3D.Utils
+{
+    public class DisableWarning : IFailuresPreprocessor
+    {
+        public FailureProcessingResult PreprocessFailures(FailuresAccessor failuresAccessor)
+        {
+            var messages = failuresAccessor.GetFailureMessages();
+            if (messages.Count() > 0)
+            {
+                foreach (FailureMessageAccessor message in messages)
+                {
+                    //var lstId = message.GetFailingElementIds();
+                    failuresAccessor.DeleteWarning(message);
+                }
+            }
+
+            return FailureProcessingResult.Continue;
+        }
+    }
+}
