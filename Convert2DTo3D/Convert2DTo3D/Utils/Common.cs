@@ -901,6 +901,20 @@ namespace Convert2DTo3D.Utils
             return false;
         }
 
+        /// <summary>
+        /// Kiểm tra 2 line có trùng nhau không (song song và khoảng cách = 0).
+        /// </summary>
+        public static bool IsCollinear(Line line1, Line line2, double tolerance = 1e-5)
+        {
+            if (line1 == null || line2 == null) return false;
+            if (!IsParallel(line1.Direction, line2.Direction)) return false;
+
+            XYZ projected = GetPointProjectOnLine(line1, line2.Origin);
+            if (projected == null) return false;
+
+            return projected.DistanceTo(line2.Origin) < tolerance;
+        }
+
         public static bool IsZero(double a, double tolerance)
         {
             return tolerance > Math.Abs(a);
