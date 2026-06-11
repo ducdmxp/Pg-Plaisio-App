@@ -205,23 +205,12 @@ namespace Convert2DTo3D.Commands
 
         private void CreateWallFromGroup(Document doc, List<ModelLine> group, Level level)
         {
-            //ModelLine mline1 = group
-            //    .OrderByDescending(l => l.GeometryCurve.Length)
-            //    .FirstOrDefault();
-
-            //ModelLine mline2 = group
-            //    .Where(l => l != null && l.Id != mline1.Id)
-            //    .FirstOrDefault(l => Common.IsParallel((l.GeometryCurve as Line)?.Direction, (mline1.GeometryCurve as Line)?.Direction) == true
-            //    && Common.IsCollinear((l.GeometryCurve as Line), (mline1.GeometryCurve as Line)));
-
-            // if (mline2 == null) return;
-
             (Line lineA, Line lineB) = GroupCollinearAndGetLongest(group);
 
             Line line1 = lineA;
             Line line2 = lineB;
 
-            if (line2 == null) return;
+            if (line1 == null || line2 == null) return;
 
             XYZ center2 = line2.Evaluate(0.5, true);
             XYZ pointProjection = Common.GetPointProjectOnLine(line1, center2);
