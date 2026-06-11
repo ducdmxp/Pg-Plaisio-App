@@ -71,4 +71,17 @@ namespace Convert2DTo3D.Utils
             return false;
         }
     }
+
+    public class DWGLineSelectionFilter : ISelectionFilter
+    {
+        public bool AllowElement(Element elem)
+        {
+            return elem is ModelLine;
+        }
+
+        public bool AllowReference(Reference reference, XYZ position)
+        {
+            return false;
+        }
+    }
 }
