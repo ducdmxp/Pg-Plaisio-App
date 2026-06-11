@@ -72,6 +72,92 @@ namespace Convert2DTo3D.Commands
             return Result.Succeeded;
         }
 
+        /// <summary>
+        /// Nhóm các ModelLine trùng nhau (collinear), trả về list các cặp (line dài nhất của mỗi nhóm).
+        /// Đầu vào: list các line đã song song với nhau.
+        /// Kết quả: mỗi phần tử là 1 cặp [longestA, longestB] đại diện cho 2 nhóm collinear.
+        /// </summary>
+        private (Line lineA, Line lineB) GroupCollinearAndGetLongest(List<ModelLine> parallelLines)
+        {
+            var used = new HashSet<int>();
+            var collinearGroups = new List<List<ModelLine>>();
+
+            for (int i = 0; i < parallelLines.Count; i++)
+            {
+                if (used.Contains(i)) continue;
+
+                Line lineI = parallelLines[i].GeometryCurve as Line;
+                if (lineI == null) continue;
+
+                var group = new List<ModelLine> { parallelLines[i] };
+                used.Add(i);
+
+                for (int j = i + 1; j < parallelLines.Count; j++)
+                {
+                    if (used.Contains(j)) continue;
+
+                    Line lineJ = parallelLines[j].GeometryCurve as Line;
+                    if (lineJ == null) continue;
+
+                    if (Common.IsCollinear(lineI, lineJ))
+                    {
+                        group.Add(parallelLines[j]);
+                        used.Add(j);
+                    }
+                }
+
+                collinearGroups.Add(group);
+            }
+
+            // Ghép từng cặp nhóm collinear liền kề, lấy line dài nhất mỗi nhóm
+
+            if (collinearGroups.Count != 2)
+            {
+                return (null, null);
+            }
+
+            Line line1 = GetLongestLine(collinearGroups[0]);
+            Line line2 = GetLongestLine(collinearGroups[1]);
+
+            if (line1.Length < line2.Length)
+                (line1, line2) = (line2, line1);
+
+            return (line1, line2);
+        }
+
+        private Line GetLongestLine(List<ModelLine> lines)
+        {
+            List<XYZ> lstPoint1 = new List<XYZ>();
+
+            foreach (var item in lines)
+            {
+                Line line = item.GeometryCurve as Line;
+                if (line == null) continue;
+
+                lstPoint1.Add(line.GetEndPoint(0));
+                lstPoint1.Add(line.GetEndPoint(1));
+            }
+
+            XYZ p0 = lstPoint1[0];
+            XYZ p1 = lstPoint1[1];
+            double distMin = p0.DistanceTo(p1);
+            for (int i = 0; i < lstPoint1.Count; i++)
+            {
+                for (int j = i + 1; j < lstPoint1.Count; j++)
+                {
+                    double dist = lstPoint1[i].DistanceTo(lstPoint1[j]);
+                    if (dist > distMin)
+                    {
+                        p0 = lstPoint1[i];
+                        p1 = lstPoint1[j];
+                        distMin = dist;
+                    }
+                }
+            }
+
+            return Line.CreateBound(p0, p1);
+        }
+
         private List<List<ModelLine>> GroupParallelLines(List<ModelLine> lines)
         {
             var used = new HashSet<int>();
@@ -119,19 +205,21 @@ namespace Convert2DTo3D.Commands
 
         private void CreateWallFromGroup(Document doc, List<ModelLine> group, Level level)
         {
-            ModelLine mline1 = group
-                .OrderByDescending(l => l.GeometryCurve.Length)
-                .FirstOrDefault();
+            //ModelLine mline1 = group
+            //    .OrderByDescending(l => l.GeometryCurve.Length)
+            //    .FirstOrDefault();
 
-            ModelLine mline2 = group
-                .Where(l => l != null && l.Id != mline1.Id)
-                .FirstOrDefault(l => Common.IsParallel((l.GeometryCurve as Line)?.Direction, (mline1.GeometryCurve as Line)?.Direction) == true
-                && Common.IsCollinear((l.GeometryCurve as Line), (mline1.GeometryCurve as Line)));
+            //ModelLine mline2 = group
+            //    .Where(l => l != null && l.Id != mline1.Id)
+            //    .FirstOrDefault(l => Common.IsParallel((l.GeometryCurve as Line)?.Direction, (mline1.GeometryCurve as Line)?.Direction) == true
+            //    && Common.IsCollinear((l.GeometryCurve as Line), (mline1.GeometryCurve as Line)));
 
-            if (mline2 == null) return;
+            // if (mline2 == null) return;
 
-            Line line1 = mline1.GeometryCurve as Line;
-            Line line2 = mline2?.GeometryCurve as Line;
+            (Line lineA, Line lineB) = GroupCollinearAndGetLongest(group);
+
+            Line line1 = lineA;
+            Line line2 = lineB;
 
             if (line2 == null) return;
 
