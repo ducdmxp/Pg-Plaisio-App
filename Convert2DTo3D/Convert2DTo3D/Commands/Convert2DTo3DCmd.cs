@@ -1,5 +1,6 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
+using Autodesk.Revit.DB.Structure;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
 using Convert2DTo3D.Utils;
@@ -8,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Controls;
 using ParameterUtils = Convert2DTo3D.Utils.ParameterUtils;
 
 namespace Convert2DTo3D.Commands
@@ -16,11 +18,6 @@ namespace Convert2DTo3D.Commands
     public class Convert2DTo3DCmd : IExternalCommand
     {
         // 23mm in feet (Revit internal unit)
-        private const double WithdDefaut = 23.0 / 304.8;
-
-        private const string layerNameExterior = "NOSIVO";
-        private const string layerNameInterior1 = "POMOCNO";
-        private const string layerNameInterior2 = "PREGRADE";
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
@@ -47,33 +44,27 @@ namespace Convert2DTo3D.Commands
                 return Result.Cancelled;
             }
 
-            List<ModelLine> lstMLineExterior = GetLinesByStyle(lines, layerNameExterior);
-
-            List<ModelLine> lstMLineInterior1 = GetLinesByStyle(lines, layerNameInterior1);
-
-            List<ModelLine> lstMLineInterior2 = GetLinesByStyle(lines, layerNameInterior2);
-
-            List<List<ModelLine>> groupExteriors = GroupParallelLines(lstMLineExterior);
-            List<List<ModelLine>> groupInterior1s = GroupParallelLines(lstMLineInterior1);
-            List<List<ModelLine>> groupInterior2s = GroupParallelLines(lstMLineInterior2);
-
             Transaction tran = new Transaction(doc, "Convert Lines to Walls");
 
             try
             {
+                double WithdDefautExt = 230 / 304.8;
+
+                double WithdDefautInt = 200 / 304.8;
+
+                string layerNameExterior = "Zidovi";
+                string layerNameInterior1 = "0";
+                string layerNameInterior2 = "PREGRADE";
+
                 tran.Start();
-                foreach (var group in groupExteriors)
-                {
-                    CreateWallFromGroup(doc, group, level, 3000 / 304.8, layerNameExterior);
-                }
-                foreach (var group in groupInterior1s)
-                {
-                    CreateWallFromGroup(doc, group, level, 3000 / 304.8, layerNameInterior1);
-                }
-                foreach (var group in groupInterior2s)
-                {
-                    CreateWallFromGroup(doc, group, level, 3000 / 304.8, layerNameInterior2);
-                }
+                CreatWallByLayer(doc, level, lines, layerNameExterior, WithdDefautExt);
+                CreatWallByLayer(doc, level, lines, layerNameInterior1, WithdDefautInt);
+                CreatWallByLayer(doc, level, lines, layerNameInterior2, WithdDefautInt);
+
+                doc.Regenerate();
+
+                CreateDoor(doc, lines);
+
                 tran.Commit();
             }
             catch (Exception ex)
@@ -83,6 +74,55 @@ namespace Convert2DTo3D.Commands
             }
 
             return Result.Succeeded;
+        }
+
+        private void CreatWallByLayer(Document doc, Level level, List<ModelLine> lines, string layerName, double withdDefautExt)
+        {
+            List<ModelLine> lstModelLine = GetLinesByStyle(lines, layerName);
+            List<List<ModelLine>> lstGroups = GroupParallelLines(lstModelLine, withdDefautExt);
+            foreach (var group in lstGroups)
+            {
+                CreateWallFromGroup(doc, group, level, 3000 / 304.8, layerName);
+            }
+        }
+
+        public void CreateDoor(Document doc, List<ModelLine> lines, string layerName = "CenterCua")
+        {
+            FamilySymbol doorType = doc.GetElement(new ElementId(1448341)) as FamilySymbol;
+
+            List<Wall> walls = new FilteredElementCollector(doc)
+                .OfClass(typeof(Wall))
+                .Cast<Wall>()
+                .ToList();
+
+            List<ModelLine> lstModelLine = GetLinesByStyle(lines, layerName);
+
+            foreach (var item in lstModelLine)
+            {
+                var bb = item.get_BoundingBox(null);
+
+                Outline outline = new Outline(bb.Min, bb.Max);
+
+                BoundingBoxIntersectsFilter filter = new BoundingBoxIntersectsFilter(outline);
+
+                Wall wall = walls.Where(w => filter.PassesFilter(w)).FirstOrDefault();
+
+                if (wall != null)
+                {
+                    if (!doorType.IsActive)
+                    {
+                        doorType.Activate();
+                        doc.Regenerate();
+                    }
+                    XYZ point = item.GeometryCurve.Evaluate(0.5, true);
+                    try
+                    {
+                        FamilyInstance door = doc.Create.NewFamilyInstance(point, doorType, wall, StructuralType.NonStructural);
+                        // door.get_Parameter(BuiltInParameter.INSTANCE_SILL_HEIGHT_PARAM).Set(900 / 304.8);
+                    }
+                    catch { }
+                }
+            }
         }
 
         /// <summary>
@@ -138,6 +178,44 @@ namespace Convert2DTo3D.Commands
             return (line1, line2);
         }
 
+        /// <summary>
+        /// Gom các ModelLine nằm trên cùng 1 đường thẳng (collinear) thành từng nhóm.
+        /// </summary>
+        private List<List<ModelLine>> GroupCollinearLines(List<ModelLine> lines)
+        {
+            var used = new HashSet<int>();
+            var groups = new List<List<ModelLine>>();
+
+            for (int i = 0; i < lines.Count; i++)
+            {
+                if (used.Contains(i)) continue;
+
+                Line lineI = lines[i].GeometryCurve as Line;
+                if (lineI == null) continue;
+
+                var group = new List<ModelLine> { lines[i] };
+                used.Add(i);
+
+                for (int j = i + 1; j < lines.Count; j++)
+                {
+                    if (used.Contains(j)) continue;
+
+                    Line lineJ = lines[j].GeometryCurve as Line;
+                    if (lineJ == null) continue;
+
+                    if (Common.IsCollinear(lineI, lineJ))
+                    {
+                        group.Add(lines[j]);
+                        used.Add(j);
+                    }
+                }
+
+                groups.Add(group);
+            }
+
+            return groups;
+        }
+
         private Line GetLongestLine(List<ModelLine> lines)
         {
             List<XYZ> lstPoint1 = new List<XYZ>();
@@ -171,7 +249,7 @@ namespace Convert2DTo3D.Commands
             return Line.CreateBound(p0, p1);
         }
 
-        private List<List<ModelLine>> GroupParallelLines(List<ModelLine> lines)
+        private List<List<ModelLine>> GroupParallelLines(List<ModelLine> lines, double withdDefautExt)
         {
             if (lines.Count <= 0) return new List<List<ModelLine>>();
 
@@ -197,14 +275,14 @@ namespace Convert2DTo3D.Commands
 
                     if (!Common.IsParallel(lineI.Direction, lineJ.Direction)) continue;
 
-                    if (lineI.Length <= WithdDefaut || lineJ.Length <= WithdDefaut) continue;
+                    //if (lineI.Length <= WithdDefaut || lineJ.Length <= WithdDefaut) continue;
 
                     XYZ centerJ = lineJ.Evaluate(0.5, true);
                     XYZ projected = Common.GetPointProjectOnLine(lineI, centerJ);
                     if (projected == null) continue;
 
                     double dist = projected.DistanceTo(centerJ);
-                    if (dist <= WithdDefaut || Common.IsEqual(dist, WithdDefaut))
+                    if (dist <= withdDefautExt || Common.IsEqual(dist, withdDefautExt))
                     {
                         group.Add(lines[j]);
                         used.Add(j);
@@ -288,7 +366,7 @@ namespace Convert2DTo3D.Commands
 
         public List<ModelLine> GetLinesByStyle(List<ModelLine> lines, string styleName)
         {
-            return lines.Where(line => GetLineStyleName(line) == styleName).ToList();
+            return lines.Where(line => GetLineStyleName(line) == styleName).OrderByDescending(x => x.GeometryCurve.Length).ToList();
         }
 
         public string GetLineStyleName(ModelLine line)
