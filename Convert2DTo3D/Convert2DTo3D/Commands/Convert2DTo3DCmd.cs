@@ -18,11 +18,27 @@ namespace Convert2DTo3D.Commands
         // 23mm in feet (Revit internal unit)
         private const double WithdDefaut = 23.0 / 304.8;
 
+        private const string layerNameExterior = "NOSIVO";
+        private const string layerNameInterior1 = "POMOCNO";
+        private const string layerNameInterior2 = "PREGRADE";
+
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
             UIApplication uiapp = commandData.Application;
             UIDocument uiDoc = uiapp.ActiveUIDocument;
             Document doc = uiDoc.Document;
+
+            Level level = new FilteredElementCollector(doc)
+               .OfClass(typeof(Level))
+               .Cast<Level>()
+               .OrderBy(l => l.Elevation)
+               .FirstOrDefault();
+
+            if (level == null)
+            {
+                TaskDialog.Show("Convert 2D to 3D", "No level found.");
+                return Result.Cancelled;
+            }
 
             List<ModelLine> lines = SelectLines(uiDoc);
             if (lines.Count == 0)
@@ -31,35 +47,32 @@ namespace Convert2DTo3D.Commands
                 return Result.Cancelled;
             }
 
-            List<ModelLine> tuongchinhs = GetLinesByStyle(lines, "NOSIVO");
-            if (tuongchinhs.Count == 0)
-            {
-                TaskDialog.Show("Convert 2D to 3D", "No NOSIVO lines found.");
-                return Result.Cancelled;
-            }
+            List<ModelLine> lstMLineExterior = GetLinesByStyle(lines, layerNameExterior);
 
-            Level level = new FilteredElementCollector(doc)
-                .OfClass(typeof(Level))
-                .Cast<Level>()
-                .OrderBy(l => l.Elevation)
-                .FirstOrDefault();
+            List<ModelLine> lstMLineInterior1 = GetLinesByStyle(lines, layerNameInterior1);
 
-            if (level == null)
-            {
-                TaskDialog.Show("Convert 2D to 3D", "No level found.");
-                return Result.Cancelled;
-            }
+            List<ModelLine> lstMLineInterior2 = GetLinesByStyle(lines, layerNameInterior2);
 
-            List<List<ModelLine>> groups = GroupParallelLines(tuongchinhs);
+            List<List<ModelLine>> groupExteriors = GroupParallelLines(lstMLineExterior);
+            List<List<ModelLine>> groupInterior1s = GroupParallelLines(lstMLineInterior1);
+            List<List<ModelLine>> groupInterior2s = GroupParallelLines(lstMLineInterior2);
 
             Transaction tran = new Transaction(doc, "Convert Lines to Walls");
 
             try
             {
                 tran.Start();
-                foreach (var group in groups)
+                foreach (var group in groupExteriors)
                 {
-                    CreateWallFromGroup(doc, group, level);
+                    CreateWallFromGroup(doc, group, level, 3000 / 304.8, layerNameExterior);
+                }
+                foreach (var group in groupInterior1s)
+                {
+                    CreateWallFromGroup(doc, group, level, 3000 / 304.8, layerNameInterior1);
+                }
+                foreach (var group in groupInterior2s)
+                {
+                    CreateWallFromGroup(doc, group, level, 3000 / 304.8, layerNameInterior2);
                 }
                 tran.Commit();
             }
@@ -160,6 +173,8 @@ namespace Convert2DTo3D.Commands
 
         private List<List<ModelLine>> GroupParallelLines(List<ModelLine> lines)
         {
+            if (lines.Count <= 0) return new List<List<ModelLine>>();
+
             var used = new HashSet<int>();
             var groups = new List<List<ModelLine>>();
 
@@ -203,7 +218,7 @@ namespace Convert2DTo3D.Commands
             return groups;
         }
 
-        private void CreateWallFromGroup(Document doc, List<ModelLine> group, Level level)
+        private void CreateWallFromGroup(Document doc, List<ModelLine> group, Level level, double height = 3000 / 304.8, string layerName = "Exterior")
         {
             (Line lineA, Line lineB) = GroupCollinearAndGetLongest(group);
 
@@ -224,19 +239,19 @@ namespace Convert2DTo3D.Commands
             Line lineCenter = line1.CreateTransformed(Transform.CreateTranslation(vector * withWall / 2)) as Line;
             if (lineCenter == null) return;
 
-            WallType wallType = GetOrCreateWallType(doc, withWall);
+            WallType wallType = GetOrCreateWallType(doc, withWall, layerName);
             if (wallType == null) return;
 
             try
             {
-                Wall.Create(doc, lineCenter, wallType.Id, level.Id, 3000 / 304.8, 0, false, false);
+                Wall.Create(doc, lineCenter, wallType.Id, level.Id, height, 0, false, false);
             }
             catch { }
         }
 
-        private WallType GetOrCreateWallType(Document doc, double thickness)
+        private WallType GetOrCreateWallType(Document doc, double thickness, string layerName = "Exterior")
         {
-            string typeName = $"Wall_{Math.Round(thickness * 304.8, 1)}mm";
+            string typeName = $"Wall_{layerName}_{Math.Round(thickness * 304.8, 1)}mm";
 
             WallType existing = new FilteredElementCollector(doc)
                 .OfClass(typeof(WallType))
@@ -257,12 +272,11 @@ namespace Convert2DTo3D.Commands
                 WallType newType = baseType.Duplicate(typeName) as WallType;
                 if (newType == null) return null;
 
-                CompoundStructure cs = newType.GetCompoundStructure();
-                if (cs != null && cs.LayerCount > 0)
-                {
-                    cs.SetLayerWidth(0, thickness);
-                    newType.SetCompoundStructure(cs);
-                }
+                var structureLayer = new CompoundStructureLayer(thickness, MaterialFunctionAssignment.Structure, ElementId.InvalidElementId);
+                CompoundStructure cs = CompoundStructure.CreateSingleLayerCompoundStructure(MaterialFunctionAssignment.Structure, thickness, ElementId.InvalidElementId);
+                cs.SetNumberOfShellLayers(ShellLayerType.Exterior, 0);
+                cs.SetNumberOfShellLayers(ShellLayerType.Interior, 0);
+                newType.SetCompoundStructure(cs);
 
                 return newType;
             }
